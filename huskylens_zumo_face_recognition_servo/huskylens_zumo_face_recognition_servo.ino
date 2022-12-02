@@ -22,7 +22,7 @@
 HUSKYLENS huskylens;
 ZumoMotors motors;
 
-//PIDLoop panLoop(350, 0, 600,true);
+PIDLoop panLoop(350, 0, 600,true);
 PIDLoop tiltLoop(500, 0, 700, true);
 
 PIDLoop rotateLoop(300, 400, 300, false);
@@ -38,7 +38,7 @@ void setup()
   motors.setRightSpeed(0);
 
   servoReady();
-  servoOperation(50);
+  servoOperation(500);
 
   Wire.begin();
   while (!huskylens.begin(Wire))
@@ -54,9 +54,15 @@ void setup()
 
 void servoReady()
 {
-  DDRD |= (1 << PD3); //enable pin3 output
-
-  TCCR2A |= (1 << WGM20) | (1 << WGM21);  //set fast pwm mode
+  DDRD |= (1 << PD3); //enable pin3, pin5 output
+  /*
+  TCCR0A=0;
+  TCCR0B=0;
+  TCCR2A=0;
+  TCCR2B=0;
+   */
+  TCCR2A |= (1 << WGM20);
+  //| (1 << WGM21);  //set fast pwm mode
   TCCR2B |= (1 << WGM22); //set fast pwm mode
   TCCR2A |= (1 << COM2B1);  //set not invert mode
   TCCR2B |= (1 << CS02) | (1 << CS01) | (1 << CS00);  //set prescaler 1024
@@ -66,7 +72,10 @@ void servoReady()
 
 void servoOperation(float commmand)
 {
-  OCR2B = map(1000+commmand, 0, 20000, 0, 156);  //set compare value (set duty cycle)
+  int duty=map(1000+commmand, 0, 20000, 0, 156); 
+  Serial.print("tilt servo value: ");
+  Serial.println(duty);
+  OCR2B =duty; //set compare value (set duty cycle)
 }
 
 void loop()
@@ -76,16 +85,18 @@ void loop()
   huskylens.request();
   HUSKYLENSResult result = huskylens.read();
   if (result.width != -1) {
-
+    
     ///////////////////////////////////////////////
     panOffset = 160 - result.xCenter;
     headingOffset = result.height;
-    tiltOffset = result.yCenter - 120;
+    //tiltOffset =result.yCenter  -120;
 
+    panLoop.update(panOffset);
+    //tiltLoop.update(panOffset);
     rotateLoop.update(panOffset);
     translateLoop.update(headingOffset);
-    tiltLoop.update(tiltOffset);
-
+    
+    
     ////////////////////////////////////////////
      // calculate left and right wheel velocities based on rotation and translation velocities
     left = -rotateLoop.m_command;
@@ -93,14 +104,20 @@ void loop()
     Serial.println("leftSpeed:"+String(left));
     Serial.println("rightSpeed:"+String(right));
     // set wheel velocities
-    motors.setLeftSpeed(left * 1.5);
-    motors.setRightSpeed(right * 1.5);
+    motors.setLeftSpeed(left * 1.8);
+    motors.setRightSpeed(right * 1.8);
 
-    ////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////
+    servoOperation(panLoop.m_command);
+    //delay(10);
+    
+    //////////////////////////////////////////////
+  
     // keep translation velocity below maximum
-    if (translateLoop.m_command > MAX_TRANSLATE_VELOCITY)
-      translateLoop.m_command = MAX_TRANSLATE_VELOCITY;
+    //if (translateLoop.m_command > MAX_TRANSLATE_VELOCITY)
+    //  translateLoop.m_command = MAX_TRANSLATE_VELOCITY;
 
+   
     if (headingOffset < 100)
     {
       motors.setLeftSpeed(translateLoop.m_command);
@@ -111,15 +128,11 @@ void loop()
       motors.setLeftSpeed(-translateLoop.m_command);
       motors.setRightSpeed(-translateLoop.m_command);
     }
-    /////////////////////////////////////////////////////
-    
-   //OCR2B = map(1000 + tiltLoop.m_command, 0, 20000, 0, 156);
-    servoOperation(tiltLoop.m_command);
-    
-    delay(10);
-    //////////////////////////////////////////////////////
+    /////////////////////////////////////////////////
+   delay(10);
   }
   else {
+    //panLoop.reset();
     rotateLoop.reset();
     //    tiltLoop.reset();
     translateLoop.reset();

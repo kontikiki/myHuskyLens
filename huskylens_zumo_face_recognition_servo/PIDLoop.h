@@ -14,7 +14,7 @@
 //
 
 
-#define PID_MAX_INTEGRAL         2000
+#define PID_MAX_INTEGRAL         2500
 #define ZUMO_BASE_DEADBAND       20
 
 // RC-servo values
