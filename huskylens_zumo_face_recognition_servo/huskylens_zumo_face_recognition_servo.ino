@@ -55,15 +55,10 @@ void setup()
 void servoReady()
 {
   DDRD |= (1 << PD3); //enable pin3, pin5 output
-  /*
-  TCCR0A=0;
-  TCCR0B=0;
-  TCCR2A=0;
-  TCCR2B=0;
-   */
+ 
   TCCR2A |= (1 << WGM20);
-  //| (1 << WGM21);  //set fast pwm mode
-  TCCR2B |= (1 << WGM22); //set fast pwm mode
+  //| (1 << WGM21);  //set phase-correct pwm mode
+  TCCR2B |= (1 << WGM22); //set phase-correct pwm mode
   TCCR2A |= (1 << COM2B1);  //set not invert mode
   TCCR2B |= (1 << CS02) | (1 << CS01) | (1 << CS00);  //set prescaler 1024
 
@@ -75,7 +70,7 @@ void servoOperation(float commmand)
   int duty=map(1000+commmand, 0, 20000, 0, 156); 
   Serial.print("tilt servo value: ");
   Serial.println(duty);
-  OCR2B =duty; //set compare value (set duty cycle)
+  OCR2B =duty; //set output compare value (set duty cycle)
 }
 
 void loop()
